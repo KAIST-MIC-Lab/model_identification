@@ -2,7 +2,6 @@
 %% for the International Conference ICCAS 2020
 %% global option 'fleqn' ensures equations flush left.
 %% set '10pt' and 'twocolumn' options.
-
 \documentclass[10pt,twocolumn]{ICCAS}
 \usepackage[a4paper, left=20mm, right=20mm, top=25mm, bottom=25mm]{geometry}
 \usepackage{amsmath, amssymb}
@@ -31,6 +30,13 @@
 % % Do not put page numbers for submission.
 %\setcounter{page}{101}
 
+\usepackage{xcolor}
+\usepackage{kotex}
+
+% \input{../template/macros/macros_general.tex}
+\newcommand{\DHHO}[1]{\textcolor{magenta}{#1}}
+\newcommand{\KHCO}[1]{\textcolor{red}{#1}}
+
 
 \begin{document}
 
@@ -46,10 +52,10 @@ Seoul, 13391, Korea (second@hankook.ac.kr) {\small${}^{*}$ Corresponding author}
 %\thanks{ \noindent
 %   This paper is supported by my funding agencies.
 %  }
-
 \abstract{
-\DHHO{예시 : This paper presents a novel online system identification method for complex nonlinear systems using neural networks. The proposed method utilizes a cumulative error cost function with a forgetting factor, enabling real-time adaptation to changing system dynamics. The stability of the proposed method is rigorously analyzed using Lyapunov theory, demonstrating Uniform Ultimate Boundedness (UUB) of the identification error. The method is compared with traditional Recursive Least Squares (RLS) and iterative nonlinear parameter estimation methods, highlighting its advantages in terms of adaptability and computational efficiency. Experimental results validate the effectiveness of the proposed approach in identifying unknown nonlinear dynamics in real-time.}
+ \DHHO{예시: This paper presents a novel online system identification method for complex nonlinear systems using neural networks. The proposed method utilizes a cumulative error cost function with a forgetting factor, enabling real-time adaptation to changing system dynamics. The stability of the proposed method is rigorously analyzed using Lyapunov theory, demonstrating Uniform Ultimate Boundedness (UUB) of the identification error. The method is compared with traditional Recursive Least Squares (RLS) and iterative nonlinear parameter estimation methods, highlighting its advantages in terms of adaptability and computational efficiency. Experimental results validate the effectiveness of the proposed approach in identifying unknown nonlinear dynamics in real-time.}
 }
+
 
 \keywords{
 Online System Identification, Neural Networks, Adaptive Control, Stability Analysis, Nonlinear Dynamics
@@ -58,35 +64,26 @@ Online System Identification, Neural Networks, Adaptive Control, Stability Analy
 \maketitle
 
 %-----------------------------------------------------------------------
-
-\section{Introduction}
-Online system identification is crucial in control applications where system dynamics are unknown or change over time. Real-time adaptability of system dynamics is essential in fields such as smart materials, human-machine interaction, and fault detection. Conventional offline identification methods require large datasets and lack real-time adaptability, making them unsuitable for dynamically changing environments.
-
-Neural networks (NNs) offer powerful capabilities to approximate unknown nonlinearities due to their universal function approximation property. This makes NNs attractive tools for adaptive control and system identification problems where obtaining an accurate model in advance is difficult or impossible.
-
-Most real-world systems are nonlinear, and traditional model-based observers rely on prior knowledge of system nonlinearities, which is rarely satisfied in practice. Neural networks provide an adaptive alternative that can learn the dynamics without such prior knowledge.
-
-Existing research on NN-based adaptive control has mainly focused on tracking error convergence (e.g., minimizing $e$). However, this study explicitly focuses on identifying the system dynamics themselves (e.g., minimizing $f - \hat{f}$). While NNs have excellent approximation capabilities, their application in control has been primarily centered on optimizing tracking performance. This leaves a gap in the identification of the underlying system dynamics, which this study aims to address. The ability to identify unknown dynamics in real time in dynamically changing environments is a key feature that distinguishes this approach from conventional offline NN training or iterative nonlinear regression methods.
-
-Recursive Least Squares (RLS): RLS achieves faster convergence than LMS (Least Mean Squares) but is mainly applicable to linearly parameterized (LIP) models. It has high computational complexity and generally requires a persistent excitation (PE) condition for global convergence. Although some variants relax this condition, there are fundamental limitations in directly applying RLS to the nonlinearly parameterized (NIP) structure of deep neural networks, which is the focus of this study.
-
-Iterative Nonlinear Parameter Estimation (e.g., Levenberg-Marquardt): These methods typically rely on iterative procedures to minimize squared residuals offline. They require initial parameter estimates, are susceptible to local minima, and assume accurate model specification. They are not designed to continuously adapt the functional form online, but rather to estimate parameters of a known nonlinear function structure.
-
-RLS and traditional nonlinear regression aim to estimate parameters within a predefined model structure. However, for truly unknown nonlinear functions as considered in this study, the function structure itself is uncertain. Neural networks, with their universal approximation property, can directly approximate functions, bypassing the need for specific parametric models. This provides a higher level of adaptability and applicability to a wide range of complex systems where explicit parameterization is difficult.
-
-This report presents a method for online identification of unknown nonlinear functions using a neural network identifier. The core novelty lies in the cost function that utilizes cumulative error, enabling weight learning via gradient descent using both historical and current data. In particular, a forgetting factor is incorporated to adjust the importance of past data. This approach shares similarities with RLS and traditional nonlinear parameter estimation methods, while also offering distinct advantages.
-\\ \\
-The main contributions of this study are as follows:
-
-\begin{itemize}
-    \item Development of a robust online neural network identification algorithm for unknown nonlinear dynamics.
-    \item Formal definition and application of a cumulative error cost function with a forgetting factor.
-    \item Rigorous Lyapunov-based stability analysis guaranteeing Uniform Ultimate Boundedness (UUB) of the error.
-    \item Comparative analysis with RLS and traditional nonlinear parameter estimation methods.
-\end{itemize}
-
-This report is organized as follows: introduction, problem definition and neural network identifier structure, proposed online learning algorithm, stability analysis, comparative analysis with related online identification methods, and conclusion and future work.
-
+\DHHO{예시:
+    \section{Introduction}
+    Online system identification is crucial in control applications where system dynamics are unknown or change over time. Real-time adaptability of system dynamics is essential in fields such as smart materials, human-machine interaction, and fault detection. Conventional offline identification methods require large datasets and lack real-time adaptability, making them unsuitable for dynamically changing environments.
+    Neural networks (NNs) offer powerful capabilities to approximate unknown nonlinearities due to their universal function approximation property. This makes NNs attractive tools for adaptive control and system identification problems where obtaining an accurate model in advance is difficult or impossible.
+    Most real-world systems are nonlinear, and traditional model-based observers rely on prior knowledge of system nonlinearities, which is rarely satisfied in practice. Neural networks provide an adaptive alternative that can learn the dynamics without such prior knowledge.
+    Existing research on NN-based adaptive control has mainly focused on tracking error convergence (e.g., minimizing $e$). However, this study explicitly focuses on identifying the system dynamics themselves (e.g., minimizing $f - \hat{f}$). While NNs have excellent approximation capabilities, their application in control has been primarily centered on optimizing tracking performance. This leaves a gap in the identification of the underlying system dynamics, which this study aims to address. The ability to identify unknown dynamics in real time in dynamically changing environments is a key feature that distinguishes this approach from conventional offline NN training or iterative nonlinear regression methods.
+    Recursive Least Squares (RLS): RLS achieves faster convergence than LMS (Least Mean Squares) but is mainly applicable to linearly parameterized (LIP) models. It has high computational complexity and generally requires a persistent excitation (PE) condition for global convergence. Although some variants relax this condition, there are fundamental limitations in directly applying RLS to the nonlinearly parameterized (NIP) structure of deep neural networks, which is the focus of this study.
+    Iterative Nonlinear Parameter Estimation (e.g., Levenberg-Marquardt): These methods typically rely on iterative procedures to minimize squared residuals offline. They require initial parameter estimates, are susceptible to local minima, and assume accurate model specification. They are not designed to continuously adapt the functional form online, but rather to estimate parameters of a known nonlinear function structure.
+    RLS and traditional nonlinear regression aim to estimate parameters within a predefined model structure. However, for truly unknown nonlinear functions as considered in this study, the function structure itself is uncertain. Neural networks, with their universal approximation property, can directly approximate functions, bypassing the need for specific parametric models. This provides a higher level of adaptability and applicability to a wide range of complex systems where explicit parameterization is difficult.
+    This report presents a method for online identification of unknown nonlinear functions using a neural network identifier. The core novelty lies in the cost function that utilizes cumulative error, enabling weight learning via gradient descent using both historical and current data. In particular, a forgetting factor is incorporated to adjust the importance of past data. This approach shares similarities with RLS and traditional nonlinear parameter estimation methods, while also offering distinct advantages.
+    \\ \\
+    The main contributions of this study are as follows:
+    \begin{itemize}
+        \item Development of a robust online neural network identification algorithm for unknown nonlinear dynamics.
+        \item Formal definition and application of a cumulative error cost function with a forgetting factor.
+        \item Rigorous Lyapunov-based stability analysis guaranteeing Uniform Ultimate Boundedness (UUB) of the error.
+        \item Comparative analysis with RLS and traditional nonlinear parameter estimation methods.
+    \end{itemize}
+    This report is organized as follows: introduction, problem definition and neural network identifier structure, proposed online learning algorithm, stability analysis, comparative analysis with related online identification methods, and conclusion and future work.
+}
 \section{Problem Formulation}
 \subsection{Robot Dynamics}
 The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
