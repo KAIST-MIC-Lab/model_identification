@@ -1,0 +1,241 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{bm} % For bold math symbols
+\usepackage[T1]{fontenc}
+
+%--- Page Layout ---
+\usepackage[margin=1in]{geometry}
+
+%--- Theorem Environments ---
+\newtheorem{theorem}{Theorem}
+\newtheorem{assumption}{Assumption}
+\newtheorem{remark}{Remark}
+\renewcommand{\qedsymbol}{$\blacksquare$}
+
+
+%--- Custom Commands ---
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\ud}{\,\mathrm{d}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\xtilde}{\tilde{\bm{x}}}
+\newcommand{\xhat}{\hat{\bm{x}}}
+\newcommand{\xbar}{\bar{\bm{x}}}
+\newcommand{\xhatbar}{\hat{\bar{\bm{x}}}}
+\newcommand{\Wtilde}{\tilde{\mathbf{W}}}
+\newcommand{\What}{\hat{\mathbf{W}}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Vtilde}{\tilde{\mathbf{V}}}
+\newcommand{\Vhat}{\hat{\mathbf{V}}}
+\newcommand{\Vstar}{\mathbf{V}^*}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Lambdamat}{\mathbf{\Lambda}}
+
+
+\title{Ultimate Boundedness of a Neural Network Identifier for Nonlinear Dynamics via Robust Adaptive Update}
+\author{Donghwa Hong}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Formulation}
+
+\subsection{System and Identifier Dynamics}
+The nonlinear system is described by:
+\begin{equation}
+    \dot{\bm{x}}(t) = \mathbf{A}\bm{x}(t) + g(\bm{x}, u) + h(\bm{x}, u)
+    \label{eq:system}
+\end{equation}
+where $\bm{x} \in \R^n$ is the state, $\mathbf{A} \in \R^{n \times n}$ is a known Hurwitz matrix, $g(\cdot)$ is an known nonlinear function and $h(\cdot)$ is an unknown nonlinear function. The NN identifier is:
+\begin{equation}
+    \dot{\xhat}(t) = \mathbf{A}\xhat(t) + g(\bm{x}, u) + \hat{h}(\xhatbar)
+    \label{eq:identifier}
+\end{equation}
+where the NN output is $\hat{h}(\hat{x},u) = \What^T \sigma(\Vhat^T \xhatbar)$. Here, $\What \in \R^{h \times n}$ and $\Vhat \in \R^{d \times h}$ are the estimated weight matrices. The NN input $\xhatbar$ is constructed from the estimated states $\xhat$ and other available signals.
+
+\subsection{Error Dynamics}
+Defining the errors $\xtilde = \bm{x} - \xhat$, $\Wtilde = \bf{W} - \What$, and $\Vtilde = \bf{V} - \Vhat$, the error dynamics are given by:
+\begin{equation}
+    \dot{\xtilde} = \mathbf{A}\xtilde + \Wtilde^T \sigma(\Vhat^T \xhatbar) + w(t)
+    \label{eq:error_dyn_final}
+\end{equation}
+where $w(t) = {\mathbf{W}}^T(\sigma(\mathbf{V}^T\xbar) - \sigma(\Vhat^T\xhatbar)) + \epsilon(x)$ is the lumped disturbance term.
+
+\begin{assumption}
+The ideal weights $\mathbf{W}, \mathbf{V}$ are bounded. The disturbance $w(t)$ is bounded by $\|w(t)\| \le w_M$. The activation function $\sigma$ and its derivatives are bounded.
+\end{assumption}
+
+\begin{assumption}[Open-Loop Stability]
+The open-loop system \eqref{eq:system} is stable, which implies that the state vector $\bm{x}(t)$ is bounded in $L_\infty$. 
+\end{assumption}
+
+
+\section{Update Law and Stability Analysis}
+
+\subsection{Update Laws}
+\begin{theorem}
+Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
+\begin{align}
+    \dot{\mathbf{\What}} &= -\eta_1\left(\frac{\partial J}{\partial \hat{\mathbf{W}}}\right) - \rho_1\|\tilde{\bm{x}}\|\hat{\mathbf{W}},\\
+    \dot{\mathbf{\Vhat}} &= -\eta_2\left(\frac{\partial J}{\partial \hat{\mathbf{V}}}\right) - \rho_2\|\tilde{\bm{x}}\|\hat{\mathbf{V}},
+\end{align}
+where $\eta > 0$ is the learning rate, $J = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \|\xtilde(\tau)\|^2 \ud\tau$ is the objective function and $\rho$ is a small positive number, then $\tilde{\bm{x}}$, $\tilde{\mathbf{W}}$, and $\tilde{\mathbf{V}}$ $\in L_\infty$. 
+\end{theorem}
+
+\begin{proof}
+ Since the cost functional is of an integral form, we first introduce the filtered error signal $\bm{z}(t)$ to construct the update laws.
+\begin{equation}
+    \bm{z}(t) = \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau) \ud\tau
+    \label{eq:filter_z}
+\end{equation}
+\begin{equation}
+    \dot{\bm{z}} = - \lambda\bm{z} + \xtilde
+    \label{eq:filter_z_dot}
+\end{equation}
+
+Let us define
+\begin{align}
+    \text{net}_{\hat{\mathbf{V}}} &= \hat{\mathbf{V}}\hat{\bm{x}}  \\
+    \text{net}_{\hat{\mathbf{W}}} &= \hat{\mathbf{W}}\sigma(\hat{\mathbf{V}}\hat{\bm{x}}).
+\end{align}
+Therefore, by using the chain rule $\frac{\partial J}{\partial \hat{\mathbf{W}}}$ and $\frac{\partial J}{\partial \hat{\mathbf{V}}}$ can be computed according to
+\begin{align*}
+    \frac{\partial J}{\partial \hat{\mathbf{W}}} &= \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{W}}}} \cdot \frac{\partial \text{net}_{\hat{\mathbf{W}}}}{\partial \hat{\mathbf{W}}} \\
+    \frac{\partial J}{\partial \hat{\mathbf{V}}} &= \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{V}}}} \cdot \frac{\partial \text{net}_{\hat{\mathbf{V}}}}{\partial \hat{\mathbf{V}}},
+\end{align*}
+where
+\begin{align}
+    \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{W}}}} 
+    &= \frac{\partial J}{\partial \tilde{\bm{x}}} \frac{\partial \tilde{\bm{z}}}{\partial \hat{\bm{x}}} \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}} = -{\bm{z}}^T \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}}, \nonumber \\
+    \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{V}}}} 
+    &= \frac{\partial J}{\partial \tilde{\bm{x}}} \frac{\partial \tilde{\bm{x}}}{\partial \hat{\bm{x}}} \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} = -{\bm{z}}^T \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}}
+\end{align}
+and
+\begin{align}
+    \frac{\partial \text{net}_{\hat{\mathbf{W}}}}{\partial \hat{\mathbf{W}}} &= \sigma(\hat{\mathbf{V}}\hat{\bm{x}}) \nonumber \\
+    \frac{\partial \text{net}_{\hat{\mathbf{V}}}}{\partial \hat{\mathbf{V}}} &= \hat{\bm{x}}.
+\end{align}
+We modify the original BP algorithm such that the static approximations of $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}}$ and $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}}$ ($\dot{\hat{\bm{x}}} = 0$) can be used.
+\begin{align}
+    \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}} &\approx -\mathbf{A}^{-1} \nonumber \\
+    \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} &\approx -\mathbf{A}^{-1}\hat{\mathbf{W}}(\mathbf{I} - \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}})), 
+\end{align}
+where
+\begin{align}
+    \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}}) = \diag\{\sigma_i^2(\hat{\mathbf{V}}_i\hat{\bm{x}})\}, \quad i=1,2,\dots,m.
+\end{align}
+\begin{align}
+    \dot{\What} &= -\eta_1 \left(z^{T} \bm{A}^{-1}  \right)^{T} \sigma(\Vhat^T\xhatbar)^T - \rho_1 \|\xtilde\| \What\\\label{eq:update_W_robust}\\
+    \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What (\mathbf{I} - \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \\\label{eq:update_V_robust}
+\end{align}
+where $\eta_W, \eta_V, \rho_1, \rho_2 > 0$ are design parameters. By using (14) and (15) in terms of $\tilde{\mathbf{W}}$ may be written as
+
+\begin{equation}
+    \dot{\tilde{\mathbf{W}}} = \eta_1 ({\bm{z}}^T \mathbf{A}^{-1})^T (\sigma(\hat{\bm{x}}))^T + \rho_1\|\tilde{\bm{x}}\|\hat{\mathbf{W}}.
+\end{equation}
+\begin{equation}
+    \dot{\tilde{\mathbf{V}}} = \eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What \diag(\sigma'(\Vhat^T\xhatbar)) \right)^T - \rho_2 \|\xtilde\| \Vhat
+\end{equation}
+\end{proof}
+\subsection{Lyapunov Stability}
+
+\begin{theorem}
+For the system given by \eqref{eq:error_dyn_final} with the update laws \eqref{eq:update_W_robust}-\eqref{eq:update_V_robust}, all signals in the system ($\xtilde, \Wtilde, \Vtilde$) are Uniformly Ultimately Bounded.
+\end{theorem}
+
+\begin{proof}
+The stability proof is conducted in two steps using a cascaded system approach.
+
+% \textbf{Step 1: UUB Analysis of the $(\xtilde, \Wtilde)$ Subsystem}
+
+We first prove the boundedness of the state error $\xtilde$ and the output layer weight error $\Wtilde$. This is possible because the term $\sigma_v = \sigma(\Vhat^T \xhatbar)$ in the error dynamics \eqref{eq:error_dyn_final} is always bounded, regardless of the value of $\Vhat$, due to the bounded nature of the activation function $\sigma$.
+
+Consider the Lyapunov function candidate for the first subsystem:
+\begin{equation}
+    L = \frac{1}{2}\xtilde^T \mathbf{P}_1 \xtilde + \frac{1}{2}\tr(\Wtilde^T \rho^{-1}\Wtilde) + \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau
+\end{equation}
+Its time derivative, after substituting the error dynamics, is:
+\begin{align}
+    \dot{L} &= -\frac{1}{2}\xtilde^T(\mathbf{Q}_1 - \mathbf{P}_2)\xtilde + \xtilde^T\mathbf{P}_1 (\Wtilde^T \sigma_v + w) + \tr(\dot{\Wtilde}^T\rho^{-1} \Wtilde) - \lambda L_{\text{int}}
+\end{align}
+where $\sigma_v = \sigma(\Vhat^T\xhatbar)$, $\mathbf{Q} = \mathbf{Q}_1 - \mathbf{P}_2 > 0$, and $L_{\text{int}} = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau$.
+We substitute the update law \eqref{eq:update_W_robust} using $\dot{\Wtilde} = -\dot{\What}$. 
+\begin{align*}
+    \tr(\dot{\Wtilde}^T \rho^{-1}\Wtilde) &= \tr\left( \left(\eta_W \mathbf{A}^{-T}\bm{z}\sigma_v^T + \rho \|\xtilde\| \What\right)^T \rho^{-1}\Wtilde \right) \\
+     &= {\eta_W}\tr(\sigma_v \bm{z}^T\mathbf{A}^{-1} \rho^{-1}\Wtilde) + \|\xtilde\| \tr(\What^T \Wtilde)
+\end{align*}
+
+We expand the leakage term by substituting $\What =\bf{W} - \Wtilde$:
+\begin{align*}
+    \|\xtilde\| \tr(\What^T\Wtilde) &= \|\xtilde\| \tr((\bf{W} - \Wtilde)^T\Wtilde)\\&= -\|\xtilde\| \|\Wtilde\|^{2}+\|\xtilde\| \|\bf{W}\|\|\Wtilde\|
+\end{align*}
+Substituting this back into the $\dot{L}$ expression:
+\begin{align*}
+    \dot{L} \le &-\frac{1}{2}\xtilde^T\mathbf{Q}\xtilde  -\|\xtilde\| \|\Wtilde\|^{2} - \lambda L_{\text{int}} \quad \text{\small } \\
+    & + \xtilde^T\mathbf{P}_1 (\Wtilde^T \sigma_v + w)+ \eta_W \tr(\sigma_v \bm{z}^T \mathbf{A}^{-1} \rho^{-1}\Wtilde) +  \|\xtilde\| \|\bf{W}\|\|\Wtilde\| \quad \text{\small}
+\end{align*}
+
+Moreover, we have
+\begin{align*}
+    |\xtilde^T\mathbf{P}_1 \Wtilde^T \sigma_v| &\le \|\xtilde\|\|\mathbf{P}_1\|(\|\Wtilde\| \sigma_{M} + \bar{w})\\
+    \|\xtilde\| \|\bf{W}\|\|\What\| &\le \|\xtilde\|\|\Wtilde\| W_M \\
+        |\eta_W \tr(\sigma_v \bm{z}^T\mathbf{A}^{-1} \rho^{-1}\Wtilde)|
+    &\le \eta_W \|\sigma_v\| \|\bm{z}\| \|\mathbf{A}^{-1} \rho^{-1}\| \|\Wtilde\| \\
+    &\le \eta_W \sigma_M \frac{\sqrt{n}}{\lambda} \|\xtilde\| \|A^{-1} \rho^{-1}\| \|\Wtilde\|. \\
+\end{align*}
+where $\|W\|\le W_M$, $\|\sigma(\xhatbar)\|\le \sigma_M$, and
+because $\bm z(t)$ is the state of the first-order filter~\eqref{eq:filter_z}
+driven by $\xtilde(t)$, its 2-norm satisfies
+\begin{align}
+    \|\bm z(t)\|
+    &= \Bigl\| \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)\,\mathrm d\tau \Bigr\| \notag\\
+    &\le \int_{0}^{t} e^{-\lambda(t-\tau)} \|\xtilde(\tau)\|\,\mathrm d\tau \notag\\
+    &\le \|\xtilde\|_{\infty} \int_{0}^{t} e^{-\lambda(t-\tau)}\,\mathrm d\tau \notag\\
+    &= \frac{1-e^{-\lambda t}}{\lambda}\,\|\xtilde\|_{\infty} \notag\\
+    &\le \frac{\sqrt{n}}{\lambda}\,\|\xtilde\|_{\infty} \notag\\
+    &\le \frac{\sqrt{n}}{\lambda}\,\|\xtilde\| \quad (\text{since } \|\xtilde\|_{\infty}\le\|\xtilde\|).
+\end{align}
+
+
+with $n$ denoting the state dimension.
+
+
+Then, the inequality becomes:
+\begin{align}
+    \dot{L} \le 
+    & -\frac{1}{2}\lambda_{\min}(\mathbf{Q})\|\xtilde\|^2 - \|\xtilde\|\|\Wtilde\|^2 - \lambda L_{\text{int}} \notag \\
+    & + \|\xtilde\|\|\mathbf{P}_1\|(\|\Wtilde\| \sigma_{M} + \bar{w}) + \|\xtilde\| W_M \|\Wtilde\| 
+    + \eta_W \sigma_M \frac{\sqrt{n}}{\lambda}\|\xtilde\|_\infty \|\mathbf{A}^{-1}\| \|\rho^{-1}\| \|\Wtilde\|
+    \label{eq:Ldot_ineq_full}
+\end{align}
+By completing the squares for the terms involving $\|\hat{W}\|$, we look for conditions on $\|x\|$ which are independent of the neural network weights error and also make the time derivative of the Lyapunov candidate negative.
+\begin{align*}
+    \dot{L} \le & - \|\xtilde\| \|\Wtilde\|^2 
+    + \left( (\|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|)\|\xtilde\| \right) \|\Wtilde\| \notag \\
+    & - \frac{1}{2}\lambda_{\min}(\mathbf{Q})\|\xtilde\|^2 
+    + \|\xtilde\|\|\mathbf{P}_1\|w_M 
+    - \lambda L_{\text{int}}
+\end{align*}
+Let $k_b = \|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|$. The terms involving $\Wtilde$ are of the form $-(\|\xtilde\|)\|\Wtilde\|^2 + (k_b\|\xtilde\|)\|\Wtilde\|$. By completing the square, this is bounded above by $\frac{(k_b\|\xtilde\|)^2}{4|\xtilde\|} = \frac{k_b^2}{4}\|\xtilde\|$.
+The final inequality for $\dot{L}$ is:
+\begin{equation}
+    \dot{L} \le -\frac{1}{2}\lambda_{min}(\mathbf{Q})\|\xtilde\|^2 - \lambda L_{\text{int}}+ \left( \|\mathbf{P}_1\|\bar{w} + \frac{k_b^2}{4} \right)\|\xtilde\|
+\end{equation}
+To find a sufficient condition that guarantees $\dot{L} \le 0$ and subsequently derive the ultimate bound, we can analyze a simpler upper bound. Since the term $-\lambda L_{int}$ is always non-positive, it can be omitted from the right-hand side while the inequality still holds. The analysis thus proceeds with the remaining terms :
+\begin{equation}
+    \|\xtilde\|\ge\frac{2\left( \|\mathbf{P}_1\|\bar{w} +(\|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|)^2 \right)}{\lambda_{min}(\mathbf{Q})}=b
+\end{equation}
+Furthermore, the above condition on $\|\xtilde\|$ guarantees the negative semi-definiteness of $\dot{L}$ and therefore, ultimate boundedness of $\xtilde$.
+In fact, $\dot{L}$ is negative definite outside the ball with radius $b$.\\ 
+
+\end{proof}
+
+\begin{remark}
+% The ultimate bound $b$ depends on several system and design parameters. Specifically, $b$ increases with the disturbance bound $\bar{w}$, the norm of the Lyapunov matrix $\|\mathbf{P}_1\|$, the maximum NN weight norm $W_M$, the activation bound $\sigma_M$, and the learning rate $\eta_W$. It also grows with the state dimension $n$ and the norm of $\mathbf{A}^{-1}\rho_1^{-1}$. Conversely, $b$ decreases as the minimum eigenvalue $\lambda_{\min}(\mathbf{Q})$ or the forgetting factor $\lambda$ increases. Therefore, reducing disturbance, choosing smaller learning rates, and increasing $\lambda_{\min}(\mathbf{Q})$ or $\lambda$ can help achieve a smaller ultimate bound for the error.
+
+% The size of the ultimate bound $b$ can be kept small by proper selection of the design parameters such as the learning rate $\eta$, the damping factor $\rho$, the Hurwitz matrix $\mathbf{A}$, and the forgetting factor $\lambda$. For selecting a proper learning rate, there is a compromise between faster convergence and avoiding overshoot. Similarly, for the damping factor, although increasing it can improve stability and reduce the bound, too much damping may lead to premature convergence of the weights to non-ideal values, thus hindering the identification performance. Moreover, the Hurwitz matrix $\mathbf{A}$ has a considerable effect on both convergence and accuracy. By selecting a more stable matrix $\mathbf{A}$ (with eigenvalues farther to the left in the complex plane), the term $\|\mathbf{A}^{-1}\|$ decreases, which reduces the error bound $b$. However, since $\mathbf{A}^{-1}$ is used in the update law, this may also decrease the convergence rate. Finally, a larger forgetting factor $\lambda$ reduces the bound $b$ by placing more emphasis on recent errors, but it can make the updates more sensitive to measurement noise, whereas a smaller $\lambda$ provides smoother updates at the cost of slower response to new error information. Therefore, the selection of these parameters requires careful consideration of the trade-off between the final estimation accuracy and the transient performance of the identifier.
+\end{remark}
+
+
+\end{document}
