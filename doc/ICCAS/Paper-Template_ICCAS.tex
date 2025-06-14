@@ -65,21 +65,17 @@ Online System Identification, Neural Networks, Adaptive Control, Stability Analy
 
 %-----------------------------------------------------------------------
 \section{Introduction}
-Online system identification is crucial in control applications where system dynamics are unknown or change over time. Real-time adaptability of system dynamics is essential in fields such as smart materials, human-machine interaction, and fault detection. Conventional offline identification methods require large datasets and lack real-time adaptability, making them unsuitable for dynamically changing environments.
-Neural networks (NNs) offer powerful capabilities to approximate unknown nonlinearities due to their universal function approximation property. This makes NNs attractive tools for adaptive control and system identification problems where obtaining an accurate model in advance is difficult or impossible.
-Most real-world systems are nonlinear, and traditional model-based observers rely on prior knowledge of system nonlinearities, which is rarely satisfied in practice. Neural networks provide an adaptive alternative that can learn the dynamics without such prior knowledge.
+System identification is the process of estimating the dynamic model of an unknown plant from input-output data, which is essential for controller design and state estimation. In particular, when the system dynamics are nonlinear or time-varying, the importance of online identification becomes more pronounced. Offline identification techniques assume large batches of data and lack real-time adaptability, making them unsuitable for dynamic environments. In contrast, online identification updates the model in real time, enabling the tracking of changing system characteristics, and is thus indispensable in dynamic control applications.
 
-Existing research on NN-based adaptive control has mainly focused on tracking error convergence (e.g., minimizing $e$ or minimizing cost function $\|e\|^2$). However, this study's major drawback of minimizing instantaneous error is that, although a high learning rate may yield good approximation at a specific moment, it can lead to parameter drift. As a result, the neural network may only approximate the function at that instant, rather than achieving accurate function approximation over the entire time interval.
+Traditional online system identification methods mainly employ Recursive Least Squares (RLS)-based algorithms. RLS updates parameters by weighting past data and guarantees convergence when the system is static. However, the forgetting factor used in RLS presents a trade-off between convergence speed and tracking ability, and the choice of an appropriate forgetting factor greatly affects real-time estimation performance. To address this issue, variable forgetting factor (VFF) techniques have been proposed, which adaptively adjust the forgetting factor.
 
-The main contributions of this study are as follows:
-\begin{itemize}
-    \item Development of a robust online neural network identification algorithm for unknown nonlinear dynamics.
-    \item Formal definition and application of a cumulative error cost function with a forgetting factor.
-    \item Rigorous Lyapunov-based stability analysis guaranteeing Uniform Ultimate Boundedness (UUB) of the error.
-    \item Comparative analysis with state error based gradient descent methods, highlighting the advantages of the proposed approach.
-\end{itemize}
-This report is organized as follows: introduction, problem definition and neural network identifier structure, proposed online learning algorithm, stability analysis, comparative analysis with related online identification methods, and conclusion and future work.
+Neural network-based identification methods have been actively studied due to their flexible modeling capabilities for nonlinear systems. Neural networks possess universal approximation properties, meaning that with appropriate size, structure, and weights, they can approximate any continuous nonlinear function arbitrarily well over a compact set, thus effectively learning complex nonlinearities. For example, multilayer perceptrons or recurrent neural networks can be used as identification models to learn input-output relationships. 
+The conventional backpropagation algorithm updates neural network weights by minimizing an instantaneous squared error cost function, but this approach inherently focuses only on instantaneous errors, making it difficult to guarantee long-term parameter convergence. To enhance robustness, stabilization techniques such as $\sigma$-modification and composite adaptation have been proposed.
 
+The limitations of existing methods are as follows. First, most algorithms use cost functions that minimize instantaneous errors, causing model parameters to focus only on momentary discrepancies and making it difficult to achieve accurate function approximation over the entire time interval. Second, persistent excitation (PE) conditions are often required for parameter convergence in neural network identification, but PE may be lost once the control objective is achieved and the system reaches steady state. Third, in nonlinear system identification and control, stability proofs are often lacking, making practical application to real systems difficult.
+
+This paper proposes a robust online neural network identification method that applies a cumulative error cost function with a forgetting factor to overcome the limitations of previous studies. Specifically, by defining a new cost function that accumulates identification errors at all time points, the method aims to minimize the overall error in a balanced manner. In addition, a variable forgetting factor is introduced to maintain adaptability to recent data while gradually reducing the influence of past information. The proposed method is rigorously analyzed using Lyapunov-based stability analysis to guarantee the Uniform Ultimate Boundedness (UUB) of the identification error. Comparative analysis with state error-based gradient descent methods demonstrates the improved stability and convergence properties of the proposed approach. The results of this study show that the method enables effective online identification and function approximation for a wide range of nonlinear systems.
+%-----------------------------------------------------------------------
 \section{Problem Formulation}
 \subsection{Model Dynamics}
 
@@ -126,20 +122,21 @@ where $w(t) = {\mathbf{W}}^T\left(\sigma({\mathbf{V}}^T\bm{\xbar}) - \sigma(\Vha
 
 
 
-\section{METHODOLOGY}
+\section{Proposed Method}
 
-\subsection{Cumulative Error based Gradient Descent}
-A common approach to update the weights of a neural network is to minimize the 
-Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
+\subsection{Integral Adaptive Law based Gradient Descent}
+A common approach to update the weights of a neural network is to minimize the cost function defined as the squared error. Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
 \begin{align}
     \dot{\mathbf{\What}} &= -\eta_1\left(\frac{\partial J}{\partial \hat{\mathbf{W}}}\right) - \rho_1\|\tilde{\bm{x}}\|\hat{\mathbf{W}},\\
     \dot{\mathbf{\Vhat}} &= -\eta_2\left(\frac{\partial J}{\partial \hat{\mathbf{V}}}\right) - \rho_2\|\tilde{\bm{x}}\|\hat{\mathbf{V}},
 \end{align}
-where $\eta > 0$ is the learning rate. 
+where $\eta > 0$ is the learning rate, and $\rho > 0$ is the leakage term.
+
+And the cost function is defined as
 \begin{equation}
 J = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} {\xtilde(\tau)}^T \xtilde(\tau) \ud\tau 
 \end{equation} 
-is the objective function and $\rho$ is a small positive number, then $\tilde{\bm{x}}$, $\tilde{\mathbf{W}}$, and $\tilde{\mathbf{V}}$ $\in L_\infty.$
+where $\lambda > 0$ is called forgetting factor. This function accumulates the squared error over time, with a forgetting factor that gradually reduces the influence of past errors.
 
 Since the cost functional is of an integral form, we first introduce the filtered error signal $\bm{z}(t)$ to construct the update laws.
 \begin{equation}
@@ -150,48 +147,46 @@ Since the cost functional is of an integral form, we first introduce the filtere
     \dot{\bm{z}} = - \lambda\bm{z} + \xtilde
     \label{eq:filter_z_dot}
 \end{equation}
-
 Let us define
-\begin{align}
+\begin{align*}
     \text{net}_{\hat{\mathbf{V}}} &= \hat{\mathbf{V}}\hat{\bm{x}}  \\
     \text{net}_{\hat{\mathbf{W}}} &= \hat{\mathbf{W}}\sigma(\hat{\mathbf{V}}\hat{\bm{x}}).
-\end{align}
+\end{align*}
 Therefore, by using the chain rule $\frac{\partial J}{\partial \hat{\mathbf{W}}}$ and $\frac{\partial J}{\partial \hat{\mathbf{V}}}$ can be computed according to
 \begin{align*}
     \frac{\partial J}{\partial \hat{\mathbf{W}}} &= \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{W}}}} \cdot \frac{\partial \text{net}_{\hat{\mathbf{W}}}}{\partial \hat{\mathbf{W}}} \\
     \frac{\partial J}{\partial \hat{\mathbf{V}}} &= \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{V}}}} \cdot \frac{\partial \text{net}_{\hat{\mathbf{V}}}}{\partial \hat{\mathbf{V}}},
 \end{align*}
 where
-\begin{align}
+\begin{align*}
     \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{W}}}} 
     &= \frac{\partial J}{\partial \tilde{\bm{x}}} \frac{\partial \tilde{\bm{z}}}{\partial \hat{\bm{x}}} \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}} = -{\bm{z}}^T \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}}, \nonumber \\
     \frac{\partial J}{\partial \text{net}_{\hat{\mathbf{V}}}} 
     &= \frac{\partial J}{\partial \tilde{\bm{x}}} \frac{\partial \tilde{\bm{x}}}{\partial \hat{\bm{x}}} \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} = -{\bm{z}}^T \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}}
-\end{align}
+\end{align*}
 and
-\begin{align}
+\begin{align*}
     \frac{\partial \text{net}_{\hat{\mathbf{W}}}}{\partial \hat{\mathbf{W}}} &= \sigma(\hat{\mathbf{V}}\hat{\bm{x}}) \nonumber \\
     \frac{\partial \text{net}_{\hat{\mathbf{V}}}}{\partial \hat{\mathbf{V}}} &= \hat{\bm{x}}.
-\end{align}
+\end{align*}
 We modify the original BP algorithm such that the static approximations of $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}}$ and $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}}$ ($\dot{\hat{\bm{x}}} = 0$) can be used.
-\begin{align}
+\begin{align*}
     \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}} &\approx -\mathbf{A}^{-1} \nonumber \\
     \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} &\approx -\mathbf{A}^{-1}\hat{\mathbf{W}}(\mathbf{I} - \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}})), 
-\end{align}
+\end{align*}
 where
-\begin{align}
+\begin{align*}
     \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}}) = \diag\{\sigma_i^2(\hat{\mathbf{V}}_i\hat{\bm{x}})\}, \quad i=1,2,\dots,m.
-\end{align}
+\end{align*}
+Then, the update laws for the weights $\What$ and $\Vhat$ can be expressed as:
 \begin{align}
-    \dot{\What} &= -\eta_1 \left(\bm{z}^{T} \bm{A}^{-1}  \right)^{T} \sigma(\Vhat^T\xhatbar)^T - \rho_1 \|\xtilde\| \What\\\label{eq:update_W_robust}\\
-    \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What (\mathbf{I} - \mathbf{\Lambda}({\mathbf{\hat{V}}}{\bm{\hat{x}}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \\\label{eq:update_V_robust}
+    \dot{\What} &= -\eta_1 \left(\bm{z}^{T} \bm{A}^{-1}  \right)^{T} \sigma(\Vhat^T\xhatbar)^T - \rho_1 \|\xtilde\| \What \label{eq:update_W_robust} \\
+    \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What (\mathbf{I} - \mathbf{\Lambda}({\mathbf{\hat{V}}}{\bm{\hat{x}}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \label{eq:update_V_robust}
 \end{align}
-where $\eta_W, \eta_V, \rho_1, \rho_2 > 0$ are design parameters.\\ 
 
 \subsection{Stability Analysis}
 
 To analyze the stability of the system described by \eqref{eq:error_dyn_final} with the update laws \eqref{eq:update_W_robust}-\eqref{eq:update_V_robust}, we will use Lyapunov's direct method. The goal is to show that the errors $\xtilde$, $\Wtilde$, and $\Vtilde$ are Uniformly Ultimately Bounded (UUB).
-
 \begin{theorem}
 For the system given by \eqref{eq:error_dyn_final} with the update laws \eqref{eq:update_W_robust}-\eqref{eq:update_V_robust}, all signals in the system ($\xtilde, \Wtilde, \Vtilde$) are Uniformly Ultimately Bounded.
 \end{theorem}
@@ -213,16 +208,15 @@ Its time derivative, after substituting the error dynamics, is:
     \dot{L} =\; & -\frac{1}{2}\xtilde^T(\mathbf{Q}_1 - \mathbf{P}_2)\xtilde+ \xtilde^T\mathbf{P}_1 (\Wtilde^T \sigma_v + w) \\
     &+ \tr(\dot{\Wtilde}^T\rho^{-1} \Wtilde) - \lambda L_{\text{int}}
 \end{align*}
-where $\sigma_v = \sigma(\Vhat^T\xhatbar)$, $\mathbf{Q} = \mathbf{Q}_1 - \mathbf{P}_2 > 0$, and $L_{\text{int}} = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau$.
-We substitute the update law \eqref{eq:update_W_robust} using $\dot{\Wtilde} = -\dot{\What}$. 
+where $\sigma_v = \sigma(\Vhat^T\xhatbar)$, $\mathbf{Q} = \mathbf{Q}_1 - \mathbf{P}_2 > 0$, and $L_{\text{int}} = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau$.\\
+And we substitute the update law \eqref{eq:update_W_robust} using $\dot{\Wtilde} = -\dot{\What}$. 
 \begin{align*}
     \tr(\dot{\Wtilde}^T \rho^{-1}\Wtilde) 
     &= \tr\Big( \big(\eta_W \mathbf{A}^{-T}\bm{z}\sigma_v^T + \rho \|\xtilde\| \What\big)^T \rho^{-1}\Wtilde \Big) \\
     &= {\eta_W}\tr(\sigma_v \bm{z}^T l_1 \Wtilde)\\
     &+ \|\xtilde\| \tr(\What^T \Wtilde)
 \end{align*}
-where $l_1 = \mathbf{A}^{-1} \rho^{-1}$ 
-
+where $l_1 = \mathbf{A}^{-1} \rho^{-1}$.
 We expand the leakage term by substituting $\What =\bf{W} - \Wtilde$:
 \begin{align*}
     \|\xtilde\| \tr(\What^T\Wtilde) &= \|\xtilde\| \tr((\bf{W} - \Wtilde)^T\Wtilde)\\&= -\|\xtilde\| \|\Wtilde\|^{2}+\|\xtilde\| \|\bf{W}\|\|\Wtilde\|
@@ -233,7 +227,6 @@ Substituting this back into the $\dot{L}$ expression:
     & + \xtilde^T\mathbf{P}_{1} (\Wtilde^T \sigma_v + w) + \eta_W \tr(\sigma_v {\bm{z}^T} l_{1} \Wtilde) \\
     &+  \|\xtilde\| \|\mathbf{W}\|\|\Wtilde\|
 \end{align*}
-
 Moreover, we have
 \begin{align*}
     |\xtilde^T\mathbf{P}_1 \Wtilde^T \sigma_v| &\le \|\xtilde\|\|\mathbf{P}_1\|(\|\Wtilde\| \sigma_{M} + \bar{w})\\
@@ -245,7 +238,7 @@ Moreover, we have
 where $\|W\|\le W_M$, $\|\sigma(\xhatbar)\|\le \sigma_M$, and
 because $\bm z(t)$ is the state of the first-order filter~\eqref{eq:filter_z}
 driven by $\xtilde(t)$, its 2-norm satisfies
-\begin{align}
+\begin{align*}
     \|\bm z(t)\|
     &= \Bigl\| \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)\,\mathrm d\tau \Bigr\| \notag\\
     &\le \int_{0}^{t} e^{-\lambda(t-\tau)} \|\xtilde(\tau)\|\,\mathrm d\tau \notag\\
@@ -253,7 +246,7 @@ driven by $\xtilde(t)$, its 2-norm satisfies
     &= \frac{1-e^{-\lambda t}}{\lambda}\,\|\xtilde\|_{\infty} \notag\\
     &\le \frac{\sqrt{n}}{\lambda}\,\|\xtilde\|_{\infty} \notag\\
     &\le \frac{\sqrt{n}}{\lambda}\,\|\xtilde\| \quad (\text{since } \|\xtilde\|_{\infty}\le\|\xtilde\|).
-\end{align}
+\end{align*}
 with $n$ denoting the state dimension. Then, the inequality becomes:
 \begin{align*}
     \dot{L} \le 
@@ -264,13 +257,14 @@ with $n$ denoting the state dimension. Then, the inequality becomes:
     \label{eq:Ldot_ineq_full}
 \end{align*}
 By completing the squares for the terms involving $\|\hat{W}\|$, we look for conditions on $\|x\|$ which are independent of the neural network weights error and also make the time derivative of the Lyapunov candidate negative.
-\begin{align*}
+\begin{align}
     \dot{L} \le & - \|\xtilde\| \|\Wtilde\|^2 + k_b\|\xtilde\| \|\Wtilde\| \notag \\
     & - \frac{1}{2}\lambda_{\min}(\mathbf{Q})\|\xtilde\|^2 
     + \|\xtilde\|\|\mathbf{P}_1\|w_M 
     - \lambda L_{\text{int}}
-\end{align*}
-where $k_b = \|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|$. The terms involving $\Wtilde$ are of the form $-(\|\xtilde\|)\|\Wtilde\|^2 + (k_b\|\xtilde\|)\|\Wtilde\|$. By completing the square, this is bounded above by $\frac{(k_b\|\xtilde\|)^2}{4|\xtilde\|} = \frac{k_b^2}{4}\|\xtilde\|$.
+\end{align}
+where $k_b = \|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|$. The terms involving $\Wtilde$ are of the form $-(\|\xtilde\|)\|\Wtilde\|^2 + (k_b\|\xtilde\|)\|\Wtilde\|$.\\ 
+By completing the square, this is bounded above by $\frac{(k_b\|\xtilde\|)^2}{4|\xtilde\|} = \frac{k_b^2}{4}\|\xtilde\|$.
 The final inequality for $\dot{L}$ is:
 \begin{align}
     \dot{L} \le -\frac{1}{2}\lambda_{min}(\mathbf{Q})\|\xtilde\|^2 - \lambda L_{\text{int}}+ \left( \|\mathbf{P}_1\|\bar{w} + \frac{k_b^2}{4} \right)\|\xtilde\|
@@ -284,11 +278,17 @@ In fact, $\dot{L}$ is negative definite outside the ball with radius $b$.\\
 
 \end{proof}
 
+\subsection{parameter tuning guidelines}
 
-parameter tuning of the learning rates $\eta_1, \eta_2$ and the forgetting factors $\rho_1, \rho_2$ is crucial for ensuring convergence and stability. The values of these parameters should be chosen based on the specific characteristics of the system being identified, such as the dynamics and noise levels.
+The proposed method requires tuning of several parameters, including the learning rates $\eta_1$, $\eta_2$, the forgetting factor $\lambda$, and the leakage terms $\rho_1$, $\rho_2$. The following guidelines can be used for parameter selection:
+\begin{itemize}
+    \item \textbf{Learning Rates ($\eta_1$, $\eta_2$)}: These should be chosen small enough to ensure stability but large enough to allow for fast learning. A common practice is to start with small values (e.g., $0.01$) and adjust based on the convergence speed observed in simulations.
+    \item \textbf{Forgetting Factor ($\lambda$)}: This parameter controls how much past errors influence the current cost function. A typical value is around $0.1$, but it can be adjusted based on the system dynamics and the desired responsiveness of the identifier.
+    \item \textbf{Leakage Terms ($\rho_1$, $\rho_2$)}: These terms help prevent unbounded growth of the weights. They can be set to small values (e.g., $0.001$) to ensure that the weights do not diverge while still allowing for sufficient adaptation.
+\end{itemize}
+\noindent
 
-
-\section{Figures, tables, and equations}
+\section{Simulation}
 
 The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
 \begin{equation}
