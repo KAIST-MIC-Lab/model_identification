@@ -6,6 +6,8 @@
 \usepackage[a4paper, left=20mm, right=20mm, top=25mm, bottom=25mm]{geometry}
 \usepackage{amsmath, amssymb}
 \usepackage{bm}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
 
 %--- Custom Commands ---
 \newcommand{\tr}{\operatorname{tr}}
@@ -65,6 +67,7 @@ Online System Identification, Neural Networks, Adaptive Control, Stability Analy
 
 %-----------------------------------------------------------------------
 \section{Introduction}
+
 System identification is the process of estimating the dynamic model of an unknown plant from input-output data, which is essential for controller design and state estimation. In particular, when the system dynamics are nonlinear or time-varying, the importance of online identification becomes more pronounced. Offline identification techniques assume large batches of data and lack real-time adaptability, making them unsuitable for dynamic environments. In contrast, online identification updates the model in real time, enabling the tracking of changing system characteristics, and is thus indispensable in dynamic control applications.
 
 Traditional online system identification methods mainly employ Recursive Least Squares (RLS)-based algorithms. RLS updates parameters by weighting past data and guarantees convergence when the system is static. However, the forgetting factor used in RLS presents a trade-off between convergence speed and tracking ability, and the choice of an appropriate forgetting factor greatly affects real-time estimation performance. To address this issue, variable forgetting factor (VFF) techniques have been proposed, which adaptively adjust the forgetting factor.
@@ -85,7 +88,7 @@ Consider the nonlinear system
     \label{eq:realsystem}
 \end{equation}
 
-where $\bm{x} \in \mathbb{R}^n$ is the state vector and $\bm{u} \in \mathbb{R}^m$ is the control input vector, and $\bm{f}(\cdot)$ represents the known part of the system dynamics, and $\bm{h}(\cdot)$ denotes the unknown nonlinear dynamics or disturbances.
+where $\bm{x} \in \mathbb{R}^n$ is the state vector and $\bm{u} \in \mathbb{R}^m$ is the control input vector, and $\bm{f}(\cdot)$ represents the known part of the system dynamics, and $\bm{h}(\cdot)$ denotes the unknown nonlinear dynamics.
 \subsection{Neural Network Identifier}
 To design a identifier, some assumptions are needed as follows : 
 \begin{assumption}
@@ -115,24 +118,26 @@ Defining the errors $\xtilde = \bm{x} - \xhat$, $\Wtilde = \bf{W} - \What$, and 
 \end{equation}
 where $w(t) = {\mathbf{W}}^T\left(\sigma({\mathbf{V}}^T\bm{\xbar}) - \sigma(\Vhat^T\xhatbar)\right) + \epsilon(x)$ is the lumped disturbance term.
 
+\subsection{Conventional Adpative Law}
+A common approach to update the weights of a neural network is gradient descent method, which minimizes the cost function defined as the squared error. 
 
+Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
+\begin{align}
+    \dot{\mathbf{\What}} &= -\eta_1\left(\frac{\partial J}{\partial \hat{\mathbf{W}}}\right) - \rho_1 \|\xtilde\| \What \label{eq:update_W}\\
+    \dot{\mathbf{\Vhat}} &= -\eta_2\left(\frac{\partial J}{\partial \hat{\mathbf{V}}}\right) - \rho_2 \|\xtilde\| \Vhat \label{eq:update_V},
+\end{align}
+where $\eta > 0$ is the learning rate, $\rho > 0$ is the leakage rate, and $\frac{\partial J}{\partial \hat{\mathbf{W}}}$ and $\frac{\partial J}{\partial \hat{\mathbf{V}}}$ are the gradients of the cost function with respect to the weights.
+And the cost function is defined as
+\begin{equation}
+J = \frac{1}{2} {\xtilde(t)}^T \xtilde(t)
+\end{equation}
+where $\xtilde(t) = \bm{x}(t) - \xhat(t)$ is the state error. The cost function $J$ is minimized by updating the weights of the neural network using the gradient descent method.
 
-
-
-
-
-
-\section{Proposed Method}
+However, since the cost function is based solely on the instantaneous error, the model parameters tend to focus on minimizing short-term discrepancies rather than ensuring consistent function approximation over the entire time interval. Consequently, it becomes challenging to guarantee accurate and uniform approximation performance throughout the whole time horizon, particularly when the system dynamics are time-varying. Therefore, it is necessary to consider a cost function that captures the overall behavior of the system in the time domain.
 
 \subsection{Integral Adaptive Law based Gradient Descent}
-A common approach to update the weights of a neural network is to minimize the cost function defined as the squared error. Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
-\begin{align}
-    \dot{\mathbf{\What}} &= -\eta_1\left(\frac{\partial J}{\partial \hat{\mathbf{W}}}\right) - \rho_1\|\tilde{\bm{x}}\|\hat{\mathbf{W}},\\
-    \dot{\mathbf{\Vhat}} &= -\eta_2\left(\frac{\partial J}{\partial \hat{\mathbf{V}}}\right) - \rho_2\|\tilde{\bm{x}}\|\hat{\mathbf{V}},
-\end{align}
-where $\eta > 0$ is the learning rate, and $\rho > 0$ is the leakage term.
 
-And the cost function is defined as
+To address the limitations of the instantaneous error cost function, we define an integrated sqaured error cost functional as follows:
 \begin{equation}
 J = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} {\xtilde(\tau)}^T \xtilde(\tau) \ud\tau 
 \end{equation} 
@@ -172,16 +177,16 @@ and
 We modify the original BP algorithm such that the static approximations of $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}}$ and $\frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}}$ ($\dot{\hat{\bm{x}}} = 0$) can be used.
 \begin{align*}
     \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{W}}}} &\approx -\mathbf{A}^{-1} \nonumber \\
-    \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} &\approx -\mathbf{A}^{-1}\hat{\mathbf{W}}(\mathbf{I} - \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}})), 
+    \frac{\partial \hat{\bm{x}}}{\partial \text{net}_{\hat{\mathbf{V}}}} &\approx -{\mathbf{A}^{-1}}\hat{\mathbf{W}}({\mathbf{I}} -  {\mathbf{\Lambda}}(\hat{{\mathbf{V}}}_i\hat{\bm{x}})), 
 \end{align*}
 where
 \begin{align*}
-    \mathbf{\Lambda}(\hat{\mathbf{V}}\hat{\bm{x}}) = \diag\{\sigma_i^2(\hat{\mathbf{V}}_i\hat{\bm{x}})\}, \quad i=1,2,\dots,m.
+    {\mathbf{\Lambda}}(\hat{{\mathbf{V}}}_i\hat{\bm{x}})= \diag\{\sigma_i^2(\hat{{\mathbf{V}}}_i\hat{\bm{x}})\}, \quad i=1,2,\dots,m.
 \end{align*}
 Then, the update laws for the weights $\What$ and $\Vhat$ can be expressed as:
 \begin{align}
     \dot{\What} &= -\eta_1 \left(\bm{z}^{T} \bm{A}^{-1}  \right)^{T} \sigma(\Vhat^T\xhatbar)^T - \rho_1 \|\xtilde\| \What \label{eq:update_W_robust} \\
-    \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What (\mathbf{I} - \mathbf{\Lambda}({\mathbf{\hat{V}}}{\bm{\hat{x}}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \label{eq:update_V_robust}
+    \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What ({\mathbf{I}} - {\mathbf{\Lambda}}(\hat{{\mathbf{V}}}_i\hat{\bm{x}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \label{eq:update_V_robust}
 \end{align}
 
 \subsection{Stability Analysis}
@@ -200,31 +205,30 @@ We first prove the boundedness of the state error $\xtilde$ and the output layer
 
 Consider the Lyapunov function candidate for the first subsystem:
 \begin{align}
-    L =\; & \frac{1}{2}\xtilde^T \mathbf{P}_1 \xtilde \notag + \frac{1}{2}\tr(\Wtilde^T \rho^{-1}\Wtilde) \notag \\
-    & + \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau
+    L =\; & \frac{1}{2}\xtilde^T {\mathbf{P}_1} \xtilde \notag + \frac{1}{2}\tr(\Wtilde^T \rho_1^{-1}\Wtilde) \notag \\
+    & + \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T {\mathbf{P}_2} \xtilde(\tau) \ud\tau
 \end{align}
 Its time derivative, after substituting the error dynamics, is:
 \begin{align*}
-    \dot{L} =\; & -\frac{1}{2}\xtilde^T(\mathbf{Q}_1 - \mathbf{P}_2)\xtilde+ \xtilde^T\mathbf{P}_1 (\Wtilde^T \sigma_v + w) \\
-    &+ \tr(\dot{\Wtilde}^T\rho^{-1} \Wtilde) - \lambda L_{\text{int}}
+    \dot{L} =\; & -\frac{1}{2}\xtilde^T({\mathbf{Q}_1} - {\mathbf{P}_2}) \xtilde + \xtilde^T\mathbf{P}_1 (\Wtilde^T \sigma_v + w) \\
+    &+ \tr(\dot{\Wtilde}^T\rho_1^{-1} \Wtilde) - \lambda L_{\text{int}}
 \end{align*}
-where $\sigma_v = \sigma(\Vhat^T\xhatbar)$, $\mathbf{Q} = \mathbf{Q}_1 - \mathbf{P}_2 > 0$, and $L_{\text{int}} = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T \mathbf{P}_2 \xtilde(\tau) \ud\tau$.\\
+where $\sigma_v = \sigma(\Vhat^T\xhatbar)$, $\mathbf{Q} = \mathbf{Q}_1 - \mathbf{P}_2 > 0$, and $\bm{L_{\text{int}}} = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau)^T {\mathbf{P}_2} \xtilde(\tau) \ud\tau$.\\
 And we substitute the update law \eqref{eq:update_W_robust} using $\dot{\Wtilde} = -\dot{\What}$. 
 \begin{align*}
-    \tr(\dot{\Wtilde}^T \rho^{-1}\Wtilde) 
-    &= \tr\Big( \big(\eta_W \mathbf{A}^{-T}\bm{z}\sigma_v^T + \rho \|\xtilde\| \What\big)^T \rho^{-1}\Wtilde \Big) \\
+    \tr(\dot{\Wtilde}^T \rho_1^{-1}\Wtilde) 
+    &= \tr\Big( \big(\eta_W {\mathbf{A}}^{-T}\bm{z}\sigma_v^T + \rho \|\xtilde\| \What\big)^T \rho_1^{-1}\Wtilde \Big) \\
     &= {\eta_W}\tr(\sigma_v \bm{z}^T l_1 \Wtilde)\\
     &+ \|\xtilde\| \tr(\What^T \Wtilde)
 \end{align*}
-where $l_1 = \mathbf{A}^{-1} \rho^{-1}$.
 We expand the leakage term by substituting $\What =\bf{W} - \Wtilde$:
 \begin{align*}
     \|\xtilde\| \tr(\What^T\Wtilde) &= \|\xtilde\| \tr((\bf{W} - \Wtilde)^T\Wtilde)\\&= -\|\xtilde\| \|\Wtilde\|^{2}+\|\xtilde\| \|\bf{W}\|\|\Wtilde\|
 \end{align*}
 Substituting this back into the $\dot{L}$ expression:
 \begin{align*}
-    \dot{L} \le &-\frac{1}{2}\xtilde^T\mathbf{Q}\xtilde  -\|\xtilde\| \|\Wtilde\|^{2} - \lambda L_{\text{int}} \\
-    & + \xtilde^T\mathbf{P}_{1} (\Wtilde^T \sigma_v + w) + \eta_W \tr(\sigma_v {\bm{z}^T} l_{1} \Wtilde) \\
+    \dot{L} \le &-\frac{1}{2}\xtilde^T{\mathbf{Q}}\xtilde  -\|\xtilde\| \|\Wtilde\|^{2} - \lambda \bm{ L_{\text{int}}} \\
+    & + \xtilde^T{\mathbf{P}_{1}} (\Wtilde^T \sigma_v + w) + \eta_W \tr(\sigma_v {\bm{z}^T} \|{\mathbf{A}^{-1}} \rho_1^{-1}\| \Wtilde) \\
     &+  \|\xtilde\| \|\mathbf{W}\|\|\Wtilde\|
 \end{align*}
 Moreover, we have
@@ -232,8 +236,8 @@ Moreover, we have
     |\xtilde^T\mathbf{P}_1 \Wtilde^T \sigma_v| &\le \|\xtilde\|\|\mathbf{P}_1\|(\|\Wtilde\| \sigma_{M} + \bar{w})\\
     \|\xtilde\| \|\bf{W}\|\|\What\| &\le \|\xtilde\|\|\Wtilde\| W_M \\
         |\eta_W \tr(\sigma_v \bm{z}^T l_1 \Wtilde)|
-    &\le \eta_W \|\sigma_v\| \|\bm{z}\| \|l_1\| \|\Wtilde\| \\
-    &\le \eta_W \sigma_M \frac{\sqrt{n}}{\lambda} \|\xtilde\| \|l_1\| \|\Wtilde\|.
+    &\le \eta_W \|\sigma_v\| \|\bm{z}\| \|{\mathbf{A}^{-1}} \rho_1^{-1}\| \|\Wtilde\| \\
+    &\le \eta_W \sigma_M \frac{\sqrt{n}}{\lambda} \|\xtilde\| \|{\mathbf{A}^{-1}} \rho_1^{-1}\| \|\Wtilde\|.
 \end{align*}
 where $\|W\|\le W_M$, $\|\sigma(\xhatbar)\|\le \sigma_M$, and
 because $\bm z(t)$ is the state of the first-order filter~\eqref{eq:filter_z}
@@ -250,53 +254,62 @@ driven by $\xtilde(t)$, its 2-norm satisfies
 with $n$ denoting the state dimension. Then, the inequality becomes:
 \begin{align*}
     \dot{L} \le 
-    & -\frac{1}{2}\lambda_{\min}(\mathbf{Q})\|\xtilde\|^2 - \|\xtilde\|\|\Wtilde\|^2 - \lambda L_{\text{int}} \notag \\
+    & -\frac{1}{2}\lambda_{\min}({\mathbf{Q}})|\xtilde\|^2 - \|\xtilde\|\|\Wtilde\|^2 - \lambda \bm{L_{\text{int}}} \notag \\
     &+ \|\xtilde\|\|\mathbf{P}_1\|(\|\Wtilde\| \sigma_{M} + \bar{w}) \\
     &+ \|\xtilde\| W_M \|\Wtilde\| 
-    + \eta_W \sigma_M \frac{\sqrt{n}}{\lambda}\|\xtilde\| \|l_1\| \|\Wtilde\|
+    + \eta_W \sigma_M \frac{\sqrt{n}}{\lambda}\|\xtilde\| \|{\mathbf{A}^{-1}} \rho_1^{-1}\| \|\Wtilde\|
     \label{eq:Ldot_ineq_full}
 \end{align*}
 By completing the squares for the terms involving $\|\hat{W}\|$, we look for conditions on $\|x\|$ which are independent of the neural network weights error and also make the time derivative of the Lyapunov candidate negative.
 \begin{align}
     \dot{L} \le & - \|\xtilde\| \|\Wtilde\|^2 + k_b\|\xtilde\| \|\Wtilde\| \notag \\
-    & - \frac{1}{2}\lambda_{\min}(\mathbf{Q})\|\xtilde\|^2 
-    + \|\xtilde\|\|\mathbf{P}_1\|w_M 
-    - \lambda L_{\text{int}}
+    & - \frac{1}{2}\lambda_{\min}({\mathbf{Q}})\|\xtilde\|^2 
+    + \|\xtilde\|\|{\mathbf{P}_1}\|w_M 
+    - \lambda \bm{L_{\text{int}}}
 \end{align}
-where $k_b = \|\mathbf{P}_1\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|\mathbf{A}^{-1}\rho_1^{-1}\|$. The terms involving $\Wtilde$ are of the form $-(\|\xtilde\|)\|\Wtilde\|^2 + (k_b\|\xtilde\|)\|\Wtilde\|$.\\ 
+where $k_b = \|{\mathbf{P}_1}\|\sigma_M + W_M + \eta_W\sigma_M \frac{\sqrt{n}}{\lambda} \|{\mathbf{A}^{-1}}\rho_1^{-1}\|$. The terms involving $\Wtilde$ are of the form $-(\|\xtilde\|)\|\Wtilde\|^2 + (k_b\|\xtilde\|)\|\Wtilde\|$.\\ 
 By completing the square, this is bounded above by $\frac{(k_b\|\xtilde\|)^2}{4|\xtilde\|} = \frac{k_b^2}{4}\|\xtilde\|$.
 The final inequality for $\dot{L}$ is:
 \begin{align}
-    \dot{L} \le -\frac{1}{2}\lambda_{min}(\mathbf{Q})\|\xtilde\|^2 - \lambda L_{\text{int}}+ \left( \|\mathbf{P}_1\|\bar{w} + \frac{k_b^2}{4} \right)\|\xtilde\|
+    \dot{L} \le -\frac{1}{2}\lambda_{min}({\mathbf{Q}})\|\xtilde\|^2 - \lambda \bm{L_{\text{int}}}+ \left( \|{\mathbf{P}_1}\|{\bar{w}} + \frac{k_b^2}{4} \right)\|\xtilde\|
 \end{align}
 To find a sufficient condition that guarantees $\dot{L} \le 0$ and subsequently derive the ultimate bound, we can analyze a simpler upper bound. Since the term $-\lambda L_{int}$ is always non-positive, it can be omitted from the right-hand side while the inequality still holds. The analysis thus proceeds with the remaining terms :
-\begin{align}
-    \|\xtilde\|\ge\frac{2\left( \|\mathbf{P}_1\|\bar{w} + k_b^2 \right)}{\lambda_{min}(\mathbf{Q})}=b
-\end{align}
+\begin{equation}
+    \|\xtilde\|\ge\frac{2\left( \|\mathbf{P}_1\|\bar{w} + k_b^2 \right)}{\lambda_{min}(\mathbf{Q})}=b \label{eq:bound_xtilde}
+\end{equation}
 Furthermore, the above condition on $\|\xtilde\|$ guarantees the negative semi-definiteness of $\dot{L}$ and therefore, ultimate boundedness of $\xtilde$.
 In fact, $\dot{L}$ is negative definite outside the ball with radius $b$.\\ 
 
 \end{proof}
 
-\subsection{parameter tuning guidelines}
+\subsection{Parameter tuning guidelines}
 
-The proposed method requires tuning of several parameters, including the learning rates $\eta_1$, $\eta_2$, the forgetting factor $\lambda$, and the leakage terms $\rho_1$, $\rho_2$. The following guidelines can be used for parameter selection:
+From the estimation error bound \eqref{eq:bound_xtilde}, several parameter tuning guidelines can be derived. First, $k_b$ is proportional to the learning rates $\eta_1$, as well as inversely proportional to the forgetting factor $\lambda$. That is,
+\[
+k_b \propto \eta_1,\, \frac{1}{\lambda}, \frac{1}{\rho_1}
+\]
+Therefore, increasing $\eta_1$ increases $k_b$, which in turn increases the ultimate bound $b$ on the estimation error. Conversely, increasing $\lambda$ reduces $k_b$ and thus tightens the error bound. This proportionality relationship provides a guideline for selecting parameters to achieve a desired trade-off between convergence speed and steady-state error.
+Although larger learning rates can lead to faster convergence, care must be taken to avoid overshoot or instability.
+
+The Hurwitz matrix $\mathbf{A}$, which is primarily used for stable integration in the estimator, has a significant effect on both the convergence and accuracy of the state estimation. A more stable (i.e., with eigenvalues further left in the complex plane) matrix $\mathbf{A}$ helps the estimator states track the actual system states with better accuracy. However, a more stable $\mathbf{A}$ may slow down the convergence of the weights, since $\mathbf{A}^{-1}$ appears in the weight update laws. One practical solution is to use a more stable $\mathbf{A}$ for improved estimation accuracy, while compensating for slower weight adaptation by increasing the learning rates.
+
+The following guidelines can be used for parameter selection:
 \begin{itemize}
-    \item \textbf{Learning Rates ($\eta_1$, $\eta_2$)}: These should be chosen small enough to ensure stability but large enough to allow for fast learning. A common practice is to start with small values (e.g., $0.01$) and adjust based on the convergence speed observed in simulations.
-    \item \textbf{Forgetting Factor ($\lambda$)}: This parameter controls how much past errors influence the current cost function. A typical value is around $0.1$, but it can be adjusted based on the system dynamics and the desired responsiveness of the identifier.
-    \item \textbf{Leakage Terms ($\rho_1$, $\rho_2$)}: These terms help prevent unbounded growth of the weights. They can be set to small values (e.g., $0.001$) to ensure that the weights do not diverge while still allowing for sufficient adaptation.
+    \item \textbf{Learning Rates ($\eta_1$, $\eta_2$)}: Choose small enough values to ensure stability, but large enough for fast learning. Start with small values (e.g., $0.01$) and adjust based on observed convergence speed and overshoot in simulations.
+    \item \textbf{Forgetting Factor ($\lambda$)}: Controls the influence of past errors. Typical values are around $0.1$, but should be tuned based on system dynamics and desired responsiveness.
+    \item \textbf{Hurwitz Matrix ($\mathbf{A}$)}: Select $\mathbf{A}$ to be sufficiently stable for accurate state tracking. If convergence of the weights is too slow, increase the learning rates to compensate.
 \end{itemize}
 \noindent
 
 \section{Simulation}
-
-The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
+\subsection{Robot Dynamics}
+To demonstrate the effectiveness of the proposed online neural network identifier, we consider a robot manipulator system as an example. The dynamics of the robot manipulator are described by a nonlinear state-space model, which is suitable for applying the proposed identification method. The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
 \begin{equation}
     \bm{M}(\bm{q})\ddot{\bm{q}} + \bm{C}(\bm{q}, \dot{\bm{q}})\dot{\bm{q}} + \bm{G}(\bm{q}) + \bm{\tau_{d}}= \bm{\tau}
     \label{eq:robot_dynamics}
 \end{equation}
-where $\bm{q} \in \R^{n}$ is the joint position vector, $\dot{\bm{q}}$ and $\ddot{\bm{q}}$ are the joint velocity and acceleration vectors, $\bm{M}(\bm{q}) \in \R^{n \times n}$ is the positive definite inertia matrix, $\mathbf{C}(\bm{q}, \dot{\bm{q}}) \in \R^{n \times n}$ is the Coriolis/centrifugal matrix, $\bm{G}(\bm{q}) \in \R^n$ is the gravity vector, and $\bm{\tau} \in \R^n$ is the control input.
-To generalize the system for identification of an unknown nonlinear function, we consider a Hamiltonian structure where the dynamics are partitioned into known and unknown components. 
+where $\bm{q} \in \R^{n}$ is the joint position vector, $\dot{\bm{q}}$ and $\ddot{\bm{q}}$ are the joint velocity and acceleration vectors, $\bm{M}(\bm{q}) \in \R^{n \times n}$ is the positive definite inertia matrix, $\mathbf{C}(\bm{q}, \dot{\bm{q}}) \in \R^{n \times n}$ is the Coriolis/centrifugal matrix, $\bm{G}(\bm{q}) \in \R^n$ is the gravity vector, $\bm{\tau} \in \R^n$ is the control input, and $\bm{\tau_d}$ is the unknown friction/damping vector.
+To generalize the system for identification of an unknown nonlinear function, we consider a Hamiltonian structure where the dynamics are partitioned into known and unknown components in state-space form. 
 \begin{align}
     \begin{bmatrix}
         \dot{\bm{q}} \\ \dot{\bm{p}}
@@ -325,7 +338,9 @@ To generalize the system for identification of an unknown nonlinear function, we
     \label{eq:robot_dynamics_nonlinear}
 \end{align}
 
-where $\bm{p} = \bm{M}(\bm{q})\dot{\bm{q}}$ is the generalized momentum, $\bm{x} = [\bm{q}^{T} \ \bm{p}^{T}]$ is the state vector composed of joint positions and momenta, and $H(\bm{q}, \bm{p})$ is the Hamiltonian (total energy) of the system. The first term on the right-hand side represents the intrinsic system dynamics derived from the Hamiltonian structure, while the second and third terms correspond to the control input and dissipative torque, respectively.
+where $\mathbf{I} \in \R^{n \times n}$ is the identity matrix, $\bm{p} = \bm{M}(\bm{q})\dot{\bm{q}}$ is the generalized momentum vector, and $H(\bm{q}, \bm{p})$ is the Hamiltonian of the system. The first term on the right-hand side represents the intrinsic system dynamics derived from the Hamiltonian structure, while the second and third terms correspond to the control input and dissipative torque(friction), respectively.
+And let us define the state vector as $\bm{x} = [\bm{q}^T, \bm{p}^T]^T \in \R^{2n}$, and the control input as $\bm{u} = \bm{\tau} \in \R^n$. Then, the system dynamics can be expressed in the form of \eqref{eq:realsystem}.
+
 
 
 \subsection{Figures and tables}

@@ -8,7 +8,7 @@
 % clear
 RESULT_PLOT_FLAG = 1;
 RUN_FLAG = 1;           % run the simulink simulation
-RESULT_SAVE_FLAG = 1;   % save the result as a .mat file in the results folder
+RESULT_SAVE_FLAG = 0;   % save the result as a .mat file in the results folder
 
 Traj_flag = 1;  % ← 1 또는 2로 설정
 
@@ -31,9 +31,9 @@ dt = 1e-3;       % simulation sampling time
                      qd1, qd2, qd1, qd2, qd1, qd2, qd1, qd2, qd1, qd2, ...
                      qd1, qd2, qd1, qd2, qd1, qd2, qd1, qd2, qd1, qd2, ...
                      qd1, q0];
-        traj_duration = 20.0;
-        init_duration = 10.0;
-        end_duration = 10.0;
+        traj_duration = 4.0;
+        init_duration = 4.0;
+        end_duration = 4.0;
     else
         % === Trajectory 2 ===
         q0 = [-pi/2; 0];
@@ -107,11 +107,11 @@ Kd = [20 0
       0  20];
 
 %% identification LOAD
-eta1 = 1e2;
-eta2 = 2e4;
+eta1 = 1e-1;
+eta2 = 1e2;
 lambda = 1e0; %(decay rate lambda = 3/T, 1e3 - > 3ms)
-rho1 = 0.0;
-rho2 = 0;
+rho1 = 0.00;
+rho2 = 0.00;
 % N = 5;
 n_i = 6;
 n_h = 20;
@@ -174,7 +174,7 @@ if RESULT_PLOT_FLAG
         end
         % logsout 저장
         save_mat = fullfile(result_folder, file_base + ".mat");
-        save(save_mat, 'logsout');
+        % save(save_mat, 'logsout');
         fprintf("  → logsout saved as %s\n", save_mat);
 
 
