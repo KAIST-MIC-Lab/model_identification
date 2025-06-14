@@ -40,7 +40,7 @@
 
 \begin{document}
 
-\title{Preparation of Papers in a Two-Column Format for\\ the International Conference on Control, Automation, and Systems}
+\title{Integral Error-Based Adaptive Neural Identifier for a Class of Uncertain Nonlinear Systems}
 
 \author{Donghwa Hong${}^{1}$ and Kyunghwan Choi${}^{2*}$ }
 
@@ -53,7 +53,7 @@ Seoul, 13391, Korea (second@hankook.ac.kr) {\small${}^{*}$ Corresponding author}
 %   This paper is supported by my funding agencies.
 %  }
 \abstract{
- \DHHO{예시: This paper presents a novel online system identification method for complex nonlinear systems using neural networks. The proposed method utilizes a cumulative error cost function with a forgetting factor, enabling real-time adaptation to changing system dynamics. The stability of the proposed method is rigorously analyzed using Lyapunov theory, demonstrating Uniform Ultimate Boundedness (UUB) of the identification error. The method is compared with traditional Recursive Least Squares (RLS) and iterative nonlinear parameter estimation methods, highlighting its advantages in terms of adaptability and computational efficiency. Experimental results validate the effectiveness of the proposed approach in identifying unknown nonlinear dynamics in real-time.}
+This paper presents a robust online neural network (NN) identifier for uncertain nonlinear systems, focusing on online system identification and function approximation. The proposed method employs a cumulative error cost function with a forgetting factor to enable real-time learning of unknown nonlinear dynamics. A rigorous Lyapunov-based stability analysis guarantees Uniform Ultimate Boundedness (UUB) of the identification error. Comparative analysis with state error-based gradient descent methods highlights the improved stability and convergence properties of the proposed approach. The results demonstrate that the method enables effective online identification and function approximation for a wide range of nonlinear systems.
 }
 
 
@@ -64,72 +64,32 @@ Online System Identification, Neural Networks, Adaptive Control, Stability Analy
 \maketitle
 
 %-----------------------------------------------------------------------
-\DHHO{예시:
-    \section{Introduction}
-    Online system identification is crucial in control applications where system dynamics are unknown or change over time. Real-time adaptability of system dynamics is essential in fields such as smart materials, human-machine interaction, and fault detection. Conventional offline identification methods require large datasets and lack real-time adaptability, making them unsuitable for dynamically changing environments.
-    Neural networks (NNs) offer powerful capabilities to approximate unknown nonlinearities due to their universal function approximation property. This makes NNs attractive tools for adaptive control and system identification problems where obtaining an accurate model in advance is difficult or impossible.
-    Most real-world systems are nonlinear, and traditional model-based observers rely on prior knowledge of system nonlinearities, which is rarely satisfied in practice. Neural networks provide an adaptive alternative that can learn the dynamics without such prior knowledge.
-    Existing research on NN-based adaptive control has mainly focused on tracking error convergence (e.g., minimizing $e$). However, this study explicitly focuses on identifying the system dynamics themselves (e.g., minimizing $f - \hat{f}$). While NNs have excellent approximation capabilities, their application in control has been primarily centered on optimizing tracking performance. This leaves a gap in the identification of the underlying system dynamics, which this study aims to address. The ability to identify unknown dynamics in real time in dynamically changing environments is a key feature that distinguishes this approach from conventional offline NN training or iterative nonlinear regression methods.
-    Recursive Least Squares (RLS): RLS achieves faster convergence than LMS (Least Mean Squares) but is mainly applicable to linearly parameterized (LIP) models. It has high computational complexity and generally requires a persistent excitation (PE) condition for global convergence. Although some variants relax this condition, there are fundamental limitations in directly applying RLS to the nonlinearly parameterized (NIP) structure of deep neural networks, which is the focus of this study.
-    Iterative Nonlinear Parameter Estimation (e.g., Levenberg-Marquardt): These methods typically rely on iterative procedures to minimize squared residuals offline. They require initial parameter estimates, are susceptible to local minima, and assume accurate model specification. They are not designed to continuously adapt the functional form online, but rather to estimate parameters of a known nonlinear function structure.
-    RLS and traditional nonlinear regression aim to estimate parameters within a predefined model structure. However, for truly unknown nonlinear functions as considered in this study, the function structure itself is uncertain. Neural networks, with their universal approximation property, can directly approximate functions, bypassing the need for specific parametric models. This provides a higher level of adaptability and applicability to a wide range of complex systems where explicit parameterization is difficult.
-    This report presents a method for online identification of unknown nonlinear functions using a neural network identifier. The core novelty lies in the cost function that utilizes cumulative error, enabling weight learning via gradient descent using both historical and current data. In particular, a forgetting factor is incorporated to adjust the importance of past data. This approach shares similarities with RLS and traditional nonlinear parameter estimation methods, while also offering distinct advantages.
-    \\ \\
-    The main contributions of this study are as follows:
-    \begin{itemize}
-        \item Development of a robust online neural network identification algorithm for unknown nonlinear dynamics.
-        \item Formal definition and application of a cumulative error cost function with a forgetting factor.
-        \item Rigorous Lyapunov-based stability analysis guaranteeing Uniform Ultimate Boundedness (UUB) of the error.
-        \item Comparative analysis with RLS and traditional nonlinear parameter estimation methods.
-    \end{itemize}
-    This report is organized as follows: introduction, problem definition and neural network identifier structure, proposed online learning algorithm, stability analysis, comparative analysis with related online identification methods, and conclusion and future work.
-}
+\section{Introduction}
+Online system identification is crucial in control applications where system dynamics are unknown or change over time. Real-time adaptability of system dynamics is essential in fields such as smart materials, human-machine interaction, and fault detection. Conventional offline identification methods require large datasets and lack real-time adaptability, making them unsuitable for dynamically changing environments.
+Neural networks (NNs) offer powerful capabilities to approximate unknown nonlinearities due to their universal function approximation property. This makes NNs attractive tools for adaptive control and system identification problems where obtaining an accurate model in advance is difficult or impossible.
+Most real-world systems are nonlinear, and traditional model-based observers rely on prior knowledge of system nonlinearities, which is rarely satisfied in practice. Neural networks provide an adaptive alternative that can learn the dynamics without such prior knowledge.
+
+Existing research on NN-based adaptive control has mainly focused on tracking error convergence (e.g., minimizing $e$ or minimizing cost function $\|e\|^2$). However, this study's major drawback of minimizing instantaneous error is that, although a high learning rate may yield good approximation at a specific moment, it can lead to parameter drift. As a result, the neural network may only approximate the function at that instant, rather than achieving accurate function approximation over the entire time interval.
+
+The main contributions of this study are as follows:
+\begin{itemize}
+    \item Development of a robust online neural network identification algorithm for unknown nonlinear dynamics.
+    \item Formal definition and application of a cumulative error cost function with a forgetting factor.
+    \item Rigorous Lyapunov-based stability analysis guaranteeing Uniform Ultimate Boundedness (UUB) of the error.
+    \item Comparative analysis with state error based gradient descent methods, highlighting the advantages of the proposed approach.
+\end{itemize}
+This report is organized as follows: introduction, problem definition and neural network identifier structure, proposed online learning algorithm, stability analysis, comparative analysis with related online identification methods, and conclusion and future work.
+
 \section{Problem Formulation}
-\subsection{Robot Dynamics}
-The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
-\begin{equation}
-    \bm{M}(\bm{q})\ddot{\bm{q}} + \bm{C}(\bm{q}, \dot{\bm{q}})\dot{\bm{q}} + \bm{G}(\bm{q}) + \bm{\tau_{d}}= \bm{\tau}
-    \label{eq:robot_dynamics}
-\end{equation}
-where $\bm{q} \in \R^{n}$ is the joint position vector, $\dot{\bm{q}}$ and $\ddot{\bm{q}}$ are the joint velocity and acceleration vectors, $\bm{M}(\bm{q}) \in \R^{n \times n}$ is the positive definite inertia matrix, $\mathbf{C}(\bm{q}, \dot{\bm{q}}) \in \R^{n \times n}$ is the Coriolis/centrifugal matrix, $\bm{G}(\bm{q}) \in \R^n$ is the gravity vector, and $\bm{\tau} \in \R^n$ is the control input.
-To generalize the system for identification of an unknown nonlinear function, we consider a Hamiltonian structure where the dynamics are partitioned into known and unknown components. 
-\begin{align}
-    \begin{bmatrix}
-        \dot{\bm{q}} \\ \dot{\bm{p}}
-    \end{bmatrix}
-    =
-    \underbrace{
-    \begin{bmatrix}
-        \mathbf{0} & \mathbf{I} \\
-        -\mathbf{I} & \mathbf{0}
-    \end{bmatrix}
-    \begin{bmatrix}
-        \frac{\partial{H}}{\partial{p}} \\ \frac{\partial{H}}{\partial{q}}
-    \end{bmatrix}
-    +
-    \begin{bmatrix}
-        \mathbf{0} \\
-        \mathbf{I}
-    \end{bmatrix} \bm{\tau}}_{\text{known}}
-    -
-    \underbrace{
-    \begin{bmatrix}
-        \mathbf{0} \\
-        \mathbf{I}
-    \end{bmatrix} \bm{\tau_d}
-    }_{\text{unknown}}
-    \label{eq:robot_dynamics_nonlinear}
-\end{align}
+\subsection{Model Dynamics}
 
-where $\bm{p} = \bm{M}(\bm{q})\dot{\bm{q}}$ is the generalized momentum, $\bm{x} = [\bm{q}^{T} \ \bm{p}^{T}]$ is the state vector composed of joint positions and momenta, and $H(\bm{q}, \bm{p})$ is the Hamiltonian (total energy) of the system. The first term on the right-hand side represents the intrinsic system dynamics derived from the Hamiltonian structure, while the second and third terms correspond to the control input and dissipative torque, respectively.
-
-And so the system can be expressed in the two explicit form:
+Consider the nonlinear system
 \begin{equation}
-    \dot{\bm{x}}(t) = \bm{f}(\bm{x}, \bm{u}) + \bm{h}(\bm{x}, \bm{u})
+    \dot{\bm{x}}(t) = \underbrace{\bm{f}(\bm{x}, \bm{u})}_{known} + \underbrace{\bm{h}(\bm{x}, \bm{u})}_{unknown}
     \label{eq:realsystem}
 \end{equation}
 
-where $\bm{f}(\bm{x}, \bm{u})$ represents the intrinsic system dynamics and control input, while $\bm{h}(\bm{x}, \bm{u})$ denotes the unknown dissipative torque.\\
+where $\bm{x} \in \mathbb{R}^n$ is the state vector and $\bm{u} \in \mathbb{R}^m$ is the control input vector, and $\bm{f}(\cdot)$ represents the known part of the system dynamics, and $\bm{h}(\cdot)$ denotes the unknown nonlinear dynamics or disturbances.
 \subsection{Neural Network Identifier}
 To design a identifier, some assumptions are needed as follows : 
 \begin{assumption}
@@ -169,7 +129,7 @@ where $w(t) = {\mathbf{W}}^T\left(\sigma({\mathbf{V}}^T\bm{\xbar}) - \sigma(\Vha
 \section{METHODOLOGY}
 
 \subsection{Cumulative Error based Gradient Descent}
-\begin{theorem}
+A common approach to update the weights of a neural network is to minimize the 
 Consider the plant model \eqref{eq:system} and the identifier model \eqref{eq:identifier}. Given Assumption 2, if the weights of the NLPNN are updated according to
 \begin{align}
     \dot{\mathbf{\What}} &= -\eta_1\left(\frac{\partial J}{\partial \hat{\mathbf{W}}}\right) - \rho_1\|\tilde{\bm{x}}\|\hat{\mathbf{W}},\\
@@ -180,10 +140,8 @@ where $\eta > 0$ is the learning rate.
 J = \frac{1}{2} \int_{0}^{t} e^{-\lambda(t-\tau)} {\xtilde(\tau)}^T \xtilde(\tau) \ud\tau 
 \end{equation} 
 is the objective function and $\rho$ is a small positive number, then $\tilde{\bm{x}}$, $\tilde{\mathbf{W}}$, and $\tilde{\mathbf{V}}$ $\in L_\infty.$
-\end{theorem}
 
-\begin{proof}
- Since the cost functional is of an integral form, we first introduce the filtered error signal $\bm{z}(t)$ to construct the update laws.
+Since the cost functional is of an integral form, we first introduce the filtered error signal $\bm{z}(t)$ to construct the update laws.
 \begin{equation}
     \bm{z}(t) = \int_{0}^{t} e^{-\lambda(t-\tau)} \xtilde(\tau) \ud\tau
     \label{eq:filter_z}
@@ -229,7 +187,6 @@ where
     \dot{\Vhat} &= -\eta_2 \xhatbar \left( \bm{z}^T \bm{A}^{-1} \What (\mathbf{I} - \mathbf{\Lambda}({\mathbf{\hat{V}}}{\bm{\hat{x}}})) \right)^T - \rho_2 \|\xtilde\| \Vhat \\\label{eq:update_V_robust}
 \end{align}
 where $\eta_W, \eta_V, \rho_1, \rho_2 > 0$ are design parameters.\\ 
-\end{proof}
 
 \subsection{Stability Analysis}
 
@@ -332,6 +289,44 @@ parameter tuning of the learning rates $\eta_1, \eta_2$ and the forgetting facto
 
 
 \section{Figures, tables, and equations}
+
+The dynamics of an $n$-degree-of-freedom robot manipulator can be described by the following nonlinear state-space model:
+\begin{equation}
+    \bm{M}(\bm{q})\ddot{\bm{q}} + \bm{C}(\bm{q}, \dot{\bm{q}})\dot{\bm{q}} + \bm{G}(\bm{q}) + \bm{\tau_{d}}= \bm{\tau}
+    \label{eq:robot_dynamics}
+\end{equation}
+where $\bm{q} \in \R^{n}$ is the joint position vector, $\dot{\bm{q}}$ and $\ddot{\bm{q}}$ are the joint velocity and acceleration vectors, $\bm{M}(\bm{q}) \in \R^{n \times n}$ is the positive definite inertia matrix, $\mathbf{C}(\bm{q}, \dot{\bm{q}}) \in \R^{n \times n}$ is the Coriolis/centrifugal matrix, $\bm{G}(\bm{q}) \in \R^n$ is the gravity vector, and $\bm{\tau} \in \R^n$ is the control input.
+To generalize the system for identification of an unknown nonlinear function, we consider a Hamiltonian structure where the dynamics are partitioned into known and unknown components. 
+\begin{align}
+    \begin{bmatrix}
+        \dot{\bm{q}} \\ \dot{\bm{p}}
+    \end{bmatrix}
+    =
+    \underbrace{
+    \begin{bmatrix}
+        \mathbf{0} & \mathbf{I} \\
+        -\mathbf{I} & \mathbf{0}
+    \end{bmatrix}
+    \begin{bmatrix}
+        \frac{\partial{H}}{\partial{p}} \\ \frac{\partial{H}}{\partial{q}}
+    \end{bmatrix}
+    +
+    \begin{bmatrix}
+        \mathbf{0} \\
+        \mathbf{I}
+    \end{bmatrix} \bm{\tau}}_{\text{known}}
+    -
+    \underbrace{
+    \begin{bmatrix}
+        \mathbf{0} \\
+        \mathbf{I}
+    \end{bmatrix} \bm{\tau_d}
+    }_{\text{unknown}}
+    \label{eq:robot_dynamics_nonlinear}
+\end{align}
+
+where $\bm{p} = \bm{M}(\bm{q})\dot{\bm{q}}$ is the generalized momentum, $\bm{x} = [\bm{q}^{T} \ \bm{p}^{T}]$ is the state vector composed of joint positions and momenta, and $H(\bm{q}, \bm{p})$ is the Hamiltonian (total energy) of the system. The first term on the right-hand side represents the intrinsic system dynamics derived from the Hamiltonian structure, while the second and third terms correspond to the control input and dissipative torque, respectively.
+
 
 \subsection{Figures and tables}
 All figures and tables should be placed after their first 
